@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة إنشاء المواقع</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; }
+        header { text-align: center; padding: 40px 0; background: #2c3e50; color: white; border-radius: 10px; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s; }
+        .card:hover { transform: translateY(-5px); }
+        .card h3 { color: #2ecc71; margin-top: 0; }
+        .card p { color: #666; line-height: 1.6; }
+        .loader { text-align: center; font-size: 1.2rem; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>تعلم إنشاء المواقع الاحترافية</h1>
+        <p>بيانات مستمدة مباشرة من Google Sheets</p>
+    </header>
+
+    <div id="loader" class="loader">جاري تحميل البيانات...</div>
+    <div id="content-grid" class="grid"></div>
+</div>
+
+<script>
+    // ضع رابط الـ Web App الذي حصلت عليه من Google Apps Script هنا
+    const SHEET_URL = "https://script.google.com/macros/s/AKfycbx9C_pWnIvy7JwYwNrcQmumy49YDjvx1EPxqYEd8T5oHx1kZc-kAi0WrML4F0uOSxvtyQ/exec";
+
+    async function loadData() {
+        try {
+            const response = await fetch(SHEET_URL);
+            const data = await response.json();
+            
+            const grid = document.getElementById('content-grid');
+            const loader = document.getElementById('loader');
+            loader.style.display = 'none';
+
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h3>${item.Title}</h3>
+                    <p>${item.Description}</p>
+                    <a href="${item.Link}" target="_blank">اقرأ المزيد ←</a>
+                `;
+                grid.appendChild(card);
+            });
+        } catch (error) {
+            console.error("خطأ في جلب البيانات:", error);
+            document.getElementById('loader').innerText = "فشل تحميل البيانات.";
+        }
+    }
+
+    loadData();
+</script>
+
+</body>
+</html>
