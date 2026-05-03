@@ -216,6 +216,19 @@ async function studentLogin() {
         btn.disabled = false;
     }
 }
+    // عند نجاح دخول المعلم بكلمة السر:
+if (studentId === TEACHER_PASSWORD) {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('backToHomeBtn').style.display = 'inline-block'; // إظهار الزر
+    return;
+}
+
+// وعند نجاح دخول الطالب (داخل بلوك النجاح):
+if (studentData) {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('backToHomeBtn').style.display = 'inline-block'; // إظهار الزر
+    // ... باقي الكود
+}
 
 function hideTeacherElements() {
     const elements = ['.controls', '.bulk-add-container', '.action-bar', '.floating-save-container'];
