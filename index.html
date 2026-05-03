@@ -155,62 +155,56 @@ let rowCount = 0;
 async function studentLogin() {
     const grade = document.getElementById('loginGrade').value;
     const section = document.getElementById('loginSection').value;
-    const studentId = document.getElementById('studentIdInput').value.trim();
+    const studentId = document.getElementById('studentIdInput').value.trim(); // الطالب سيدخل رقمه مثلاً 10
     const btn = document.getElementById('loginBtn');
     const errorMsg = document.getElementById('loginError');
 
-    if (!studentId) { alert("يرجى إدخال رقم الطالب"); return; }
+    if (!studentId) { alert("يرجى إدخال رقمك"); return; }
 
-    // التحقق إذا كان الداخل هو المعلم بكلمة السر
+    // دخول المعلم بكلمة السر
     if (studentId === TEACHER_PASSWORD) {
         document.getElementById('loginOverlay').style.display = 'none';
         return;
     }
 
-    btn.innerHTML = "⏳ جاري جلب نتيجتك...";
+    btn.innerHTML = "⏳ جاري البحث...";
     btn.disabled = true;
-    errorMsg.style.display = "none";
 
     try {
         const response = await fetch(`${scriptURL}?grade=${grade}&section=${section}`);
         const result = await response.json();
 
         if (result.result === "success" && result.data.length > 0) {
-            // البحث عن الطالب (نفترض أن الرقم في العمود الأول 'م')
-            const studentData = result.data.find(row => String(row[0]).trim() === studentId);
+            
+            // بما أن العمود A هو الاسم، سنعتبر رقم الطالب هو ترتيبه (Index + 1)
+            // أو نبحث في عمود "م" إذا كنت تضعه في جوجل شيت كعمود إضافي
+            const index = parseInt(studentId) - 1; // تحويل رقم 10 إلى إندكس 9
+            const studentData = result.data[index]; 
 
             if (studentData) {
                 document.getElementById('loginOverlay').style.display = 'none';
-                
-                // تحديث الواجهة حسب الصف
                 document.getElementById('grade').value = grade;
                 document.getElementById('section').value = section;
                 updateHeaders();
 
-                // عرض سطر الطالب فقط
                 clearTable();
-                addNewRow(studentData);
+                // نرسل البيانات مع تمرير الرقم الذي أدخله الطالب ليكون هو المعرف
+                addNewRow(studentData, studentId); 
 
-                // إخفاء أدوات المعلم لخصوصية الطالب
                 hideTeacherElements();
                 
-                // عرض التقرير الوصفي تلقائياً
                 setTimeout(() => {
                     openReportsModal();
-                    document.getElementById('searchInput').style.display = 'none'; // إخفاء البحث
+                    if(document.getElementById('searchInput')) document.getElementById('searchInput').style.display = 'none';
                 }, 500);
 
             } else {
-                errorMsg.innerText = "❌ لم يتم العثور على الرقم (" + studentId + ") في هذه الشعبة.";
+                errorMsg.innerText = "❌ لا يوجد طالب مسجل بهذا الرقم (" + studentId + ")";
                 errorMsg.style.display = "block";
             }
-        } else {
-            errorMsg.innerText = "⚠️ هذه الشعبة لا تحتوي على بيانات حالياً.";
-            errorMsg.style.display = "block";
         }
     } catch (e) {
-        errorMsg.innerText = "❌ فشل الاتصال بالسيرفر. تأكد من رابط ScriptURL.";
-        errorMsg.style.display = "block";
+        alert("خطأ في الاتصال");
     } finally {
         btn.innerHTML = "عرض نتيجتي";
         btn.disabled = false;
@@ -243,41 +237,41 @@ function clearTable() {
     rowCount = 0;
 }
 
-function addNewRow(data = []) {
+function addNewRow(data = [], manualId = null) {
     const grade = document.getElementById('grade').value;
     const tbody = document.getElementById('tableBody');
     const row = document.createElement('tr');
     row.className = 'student-row';
     
-    // استخدام الرقم من البيانات إذا وجد، وإلا استخدام العداد
-    let displayNum = data[0] || (++rowCount);
-    if(data.length > 0) rowCount = data[0]; 
+    // إذا دخل الطالب برقم، نستخدمه، وإلا نستخدم العداد التلقائي
+    rowCount++;
+    let displayNum = manualId ? manualId : rowCount;
 
+    // ملاحظة: data[0] هو الاسم الآن لأن الاسم في العمود A
     let cells = `<td class="row-number">${displayNum}</td>
-                 <td><input type="text" class="s-name" value="${data[1] || ''}" readonly>
-                     <input type="hidden" class="s-phone" id="st-phone-${displayNum}" value="${grade === "5" ? (data[14] || '') : (data[10] || '')}"></td>
-                 <td><input type="number" class="s-d1" value="${data[2] || ''}" readonly></td>
-                 <td><input type="number" class="s-d2" value="${data[3] || ''}" readonly></td>`;
+                 <td><input type="text" class="s-name" value="${data[0] || ''}" readonly>
+                     <input type="hidden" class="s-phone" id="st-phone-${displayNum}" value="${grade === "5" ? (data[13] || '') : (data[9] || '')}"></td>
+                 <td><input type="number" class="s-d1" value="${data[1] || ''}" readonly></td>
+                 <td><input type="number" class="s-d2" value="${data[2] || ''}" readonly></td>`;
 
     if (grade === "5") {
-        cells += `<td><input type="number" class="s-q1" value="${data[4] || ''}" readonly></td>
-                  <td><input type="number" class="s-q2" value="${data[5] || ''}" readonly></td>
-                  <td><input type="number" class="s-q3" value="${data[6] || ''}" readonly></td>
-                  <td><input type="number" class="s-q4" value="${data[7] || ''}" readonly></td>
-                  <td><input type="number" class="s-a1" value="${data[9] || ''}" readonly></td>
-                  <td><input type="number" class="s-a2" value="${data[10] || ''}" readonly></td>
-                  <td><input type="number" class="s-proj" value="${data[12] || ''}" readonly></td>`;
+        // تم زحزحة الاندكس بمقدار -1 لأننا ألغينا عمود الرقم من الإكسل
+        cells += `<td><input type="number" class="s-q1" value="${data[3] || ''}" readonly></td>
+                  <td><input type="number" class="s-q2" value="${data[4] || ''}" readonly></td>
+                  <td><input type="number" class="s-q3" value="${data[5] || ''}" readonly></td>
+                  <td><input type="number" class="s-q4" value="${data[6] || ''}" readonly></td>
+                  <td><input type="number" class="s-a1" value="${data[8] || ''}" readonly></td>
+                  <td><input type="number" class="s-a2" value="${data[9] || ''}" readonly></td>
+                  <td><input type="number" class="s-proj" value="${data[11] || ''}" readonly></td>`;
     } else {
-        cells += `<td><input type="number" class="s-a1" value="${data[4] || ''}" readonly></td>
-                  <td><input type="number" class="s-a2" value="${data[5] || ''}" readonly></td>
-                  <td><input type="number" class="s-test" value="${data[7] || ''}" readonly></td>
-                  <td><input type="number" class="s-proj" value="${data[8] || ''}" readonly></td>`;
+        cells += `<td><input type="number" class="s-a1" value="${data[3] || ''}" readonly></td>
+                  <td><input type="number" class="s-a2" value="${data[4] || ''}" readonly></td>
+                  <td><input type="number" class="s-test" value="${data[6] || ''}" readonly></td>
+                  <td><input type="number" class="s-proj" value="${data[7] || ''}" readonly></td>`;
     }
     row.innerHTML = cells;
     tbody.appendChild(row);
 }
-
-// أضف بقية الدوال (getPhrase, openReportsModal, إلخ) كما هي في كودك الأصلي هنا...
 </script>
 </body>
 </html>
