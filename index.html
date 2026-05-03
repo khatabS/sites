@@ -160,7 +160,7 @@
         if (result.result === "success" && result.data.length > 0) {
             // البحث عن الطالب بواسطة الرقم (الرقم هو التسلسل في العمود الأول م)
             // ملاحظة: نفترض أن الطالب رقم 10 هو الموجود في الصف العاشر من البيانات
-            const studentData = result.data.find(row => row[0] == studentId);
+            const studentData = result.data.find(row => row[13] == studentId);
 
             if (studentData) {
                 // إخفاء واجهة الدخول
