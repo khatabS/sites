@@ -68,17 +68,29 @@
 </head>
 <body>
 
-  <!-- واجهة تسجيل الدخول -->
+<!-- واجهة تسجيل دخول الطالب -->
 <div id="loginOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #2c3e50; z-index: 2000; display: flex; justify-content: center; align-items: center; color: white; text-align: center;">
-    <div style="background: white; padding: 40px; border-radius: 15px; color: #333; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 400px;">
-        <h3 style="margin-bottom: 20px; color: #2c3e50;">مرحباً بك في المنصة</h3>
-        <p style="font-size: 14px; color: #666;">يرجى إدخال رقم التعريف الخاص بك</p>
-        <input type="password" id="loginId" placeholder="أدخل الرقم هنا..." style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; text-align: center; font-size: 18px;">
-        <button onclick="checkLogin()" style="width: 100%; background: #3498db; color: white; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px;">دخول</button>
-        <p id="loginError" style="color: #e74c3c; margin-top: 15px; display: none; font-size: 13px;">⚠️ الرقم غير صحيح، حاول مرة أخرى.</p>
+    <div style="background: white; padding: 30px; border-radius: 15px; color: #333; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 400px;">
+        <h3 style="margin-bottom: 20px;">الاستعلام عن النتائج</h3>
+        
+        <select id="loginGrade" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            <option value="5">الصف الخامس</option>
+            <option value="7">الصف السابع</option>
+        </select>
+
+        <select id="loginSection" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            <option value="1">شعبة 1</option>
+            <option value="2">شعبة 2</option>
+            <!-- أضف بقية الشعب هنا -->
+        </select>
+
+        <input type="number" id="studentIdInput" placeholder="أدخل رقمك (مثلاً: 10)" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #ddd; border-radius: 8px; text-align: center; font-size: 18px;">
+        
+        <button onclick="studentLogin()" id="loginBtn" style="width: 100%; background: #27ae60; color: white; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">عرض نتيجتي</button>
+        
+        <p id="loginError" style="color: #e74c3c; margin-top: 15px; display: none;">⚠️ لم يتم العثور على بيانات بهذا الرقم.</p>
     </div>
 </div>
-
 <div class="container">
     <h2>منصة رصد الدرجات والتقارير الوصفية</h2>
     
@@ -128,42 +140,68 @@
     </div>
 </div>
 
-<script>
-  // مصفوفة تجريبية لأرقام الدخول (يمكنك استبدالها بجلب بيانات من الشيت)
-const authorizedUsers = ["1234", "5678", "202401", "202402"]; 
-const adminPass = "teacher99"; // رقم المعلم
-
-function checkLogin() {
-    const inputId = document.getElementById('loginId').value;
+<script>async function studentLogin() {
+    const grade = document.getElementById('loginGrade').value;
+    const section = document.getElementById('loginSection').value;
+    const studentId = document.getElementById('studentIdInput').value;
+    const btn = document.getElementById('loginBtn');
     const errorMsg = document.getElementById('loginError');
-    const overlay = document.getElementById('loginOverlay');
 
-    // التحقق إذا كان المستخدم معلماً أو طالباً مصرحاً له
-    if (inputId === adminPass || authorizedUsers.includes(inputId)) {
-        // إخفاء واجهة التسجيل وإظهار المنصة
-        overlay.style.transition = "opacity 0.5s ease";
-        overlay.style.opacity = "0";
-        setTimeout(() => {
-            overlay.style.display = "none";
-        }, 500);
-        
-        // إذا كان معلماً، يمكننا إظهار أزرار الحفظ (اختياري)
-        if (inputId !== adminPass) {
-            document.querySelector('.floating-save-container').style.display = 'none';
-            document.querySelector('.bulk-add-container').style.display = 'none';
+    if (!studentId) { alert("يرجى إدخال الرقم"); return; }
+
+    btn.innerHTML = "⏳ جاري البحث...";
+    btn.disabled = true;
+
+    try {
+        // جلب البيانات من Google Sheets بناءً على الصف والشعبة
+        const response = await fetch(`${scriptURL}?grade=${grade}&section=${section}`);
+        const result = await response.json();
+
+        if (result.result === "success" && result.data.length > 0) {
+            // البحث عن الطالب بواسطة الرقم (الرقم هو التسلسل في العمود الأول م)
+            // ملاحظة: نفترض أن الطالب رقم 10 هو الموجود في الصف العاشر من البيانات
+            const studentData = result.data.find(row => row[0] == studentId);
+
+            if (studentData) {
+                // إخفاء واجهة الدخول
+                document.getElementById('loginOverlay').style.display = 'none';
+                
+                // تحديث واجهة الجدول الرئيسية (اختياري: لتحديث الهيدرز)
+                document.getElementById('grade').value = grade;
+                document.getElementById('section').value = section;
+                updateHeaders();
+
+                // إضافة سطر الطالب فقط إلى الجدول
+                clearTable();
+                addNewRow(studentData);
+
+                // إخفاء أدوات التحكم للمعلم لكي لا يرى الطالب غير نتيجته
+                document.querySelector('.controls').style.display = 'none';
+                document.querySelector('.bulk-add-container').style.display = 'none';
+                document.querySelector('.action-bar').style.display = 'none';
+                document.querySelector('.floating-save-container').style.display = 'none';
+                
+                // فتح التقرير الوصفي تلقائياً للطالب
+                setTimeout(() => {
+                    openReportsModal();
+                    // إخفاء خانة البحث والرقم في المودال لخصوصية الطالب
+                    document.getElementById('searchInput').style.display = 'none';
+                }, 500);
+
+            } else {
+                errorMsg.style.display = "block";
+            }
+        } else {
+            errorMsg.innerText = "⚠️ الشعبة لا تحتوي على بيانات.";
+            errorMsg.style.display = "block";
         }
-    } else {
-        errorMsg.style.display = "block";
-        document.getElementById('loginId').style.borderColor = "#e74c3c";
+    } catch (e) {
+        alert("خطأ في الاتصال بالخادم");
+    } finally {
+        btn.innerHTML = "عرض نتيجتي";
+        btn.disabled = false;
     }
 }
-
-// السماح بالدخول عند الضغط على زر Enter
-document.getElementById('loginId').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        checkLogin();
-    }
-});
     // ==========================================
     // ⚠️ تنبيه: ضع الرابط الخاص بك هنا 
     // ==========================================
